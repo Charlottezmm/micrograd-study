@@ -4,14 +4,13 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_PYTHON="$ROOT_DIR/.venv/bin/python"
-VENV_JUPYTER="$ROOT_DIR/.venv/bin/jupyter-lab"
 HOST="${JUPYTER_HOST:-127.0.0.1}"
 PORT="${JUPYTER_PORT:-8888}"
 LOG_FILE="${JUPYTER_LOG_FILE:-/tmp/deep-learning-study-jupyter.log}"
 PID_FILE="${JUPYTER_PID_FILE:-/tmp/deep-learning-study-jupyter.pid}"
 
-if [[ ! -x "$VENV_PYTHON" || ! -x "$VENV_JUPYTER" ]]; then
-  echo "Missing .venv or jupyter-lab. Run: python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt" >&2
+if [[ ! -x "$VENV_PYTHON" ]]; then
+  echo "Missing .venv python. Run: python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt" >&2
   exit 1
 fi
 
@@ -44,13 +43,15 @@ host = os.environ.get("JUPYTER_HOST", "127.0.0.1")
 port = os.environ.get("JUPYTER_PORT", "8888")
 log_file = Path(os.environ.get("JUPYTER_LOG_FILE", "/tmp/deep-learning-study-jupyter.log"))
 pid_file = Path(os.environ.get("JUPYTER_PID_FILE", "/tmp/deep-learning-study-jupyter.pid"))
-jupyter = root_dir / ".venv" / "bin" / "jupyter-lab"
+python = root_dir / ".venv" / "bin" / "python"
 
 log_file.parent.mkdir(parents=True, exist_ok=True)
 with log_file.open("ab", buffering=0) as log:
     process = subprocess.Popen(
         [
-            str(jupyter),
+            str(python),
+            "-m",
+            "jupyterlab",
             "--no-browser",
             f"--ip={host}",
             f"--port={port}",
