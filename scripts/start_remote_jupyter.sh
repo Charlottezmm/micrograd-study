@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VENV_PYTHON="$ROOT_DIR/.venv/bin/python"
+VENV_JUPYTER="$ROOT_DIR/.venv/bin/jupyter-lab"
+HOST="${JUPYTER_HOST:-127.0.0.1}"
+PORT="${JUPYTER_PORT:-8888}"
+LOG_FILE="${JUPYTER_LOG_FILE:-/tmp/deep-learning-study-jupyter.log}"
+PID_FILE="${JUPYTER_PID_FILE:-/tmp/deep-learning-study-jupyter.pid}"
+
+if [[ ! -x "$VENV_PYTHON" || ! -x "$VENV_JUPYTER" ]]; then
+  echo "Missing .venv or jupyter-lab. Run: python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt" >&2
+  exit 1
+fi
+
+if [[ -f "$PID_FILE" ]]; then
+  EXISTING_PID="$(cat "$PID_FILE" || true)"
+  if [[ -n "${EXISTING_PID}" ]] && kill -0 "${EXISTING_PID}" 2>/dev/null; then
+    echo "Jupyter is already running with PID ${EXISTING_PID}."
+    echo "Open: http://${HOST}:${PORT}"
+    exit 0
+  fi
+fi
+
+if lsof -nP -iTCP:"${PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "Port ${PORT} is already in use. Stop the existing Jupyter process or choose another JUPYTER_PORT." >&2
+  exit 1
+fi
+
+cd "$ROOT_DIR"
+
+"$VENV_PYTHON" - <<'PY'
+import os
+import socket
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+root_dir = Path.cwd()
+host = os.environ.get("JUPYTER_HOST", "127.0.0.1")
+port = os.environ.get("JUPYTER_PORT", "8888")
+log_file = Path(os.environ.get("JUPYTER_LOG_FILE", "/tmp/deep-learning-study-jupyter.log"))
+pid_file = Path(os.environ.get("JUPYTER_PID_FILE", "/tmp/deep-learning-study-jupyter.pid"))
+jupyter = root_dir / ".venv" / "bin" / "jupyter-lab"
+
+log_file.parent.mkdir(parents=True, exist_ok=True)
+with log_file.open("ab", buffering=0) as log:
+    process = subprocess.Popen(
+        [
+            str(jupyter),
+            "--no-browser",
+            f"--ip={host}",
+            f"--port={port}",
+            "--ServerApp.port_retries=0",
+        ],
+        cwd=root_dir,
+        stdin=subprocess.DEVNULL,
+        stdout=log,
+        stderr=log,
+        start_new_session=True,
+    )
+
+for _ in range(20):
+    if process.poll() is not None:
+        print("Jupyter exited before it started listening.", file=sys.stderr)
+        sys.exit(1)
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.2)
+        if sock.connect_ex((host, int(port))) == 0:
+            pid_file.write_text(f"{process.pid}\n")
+            print(process.pid)
+            sys.exit(0)
+
+    time.sleep(0.25)
+
+process.terminate()
+print("Jupyter did not start listening in time.", file=sys.stderr)
+sys.exit(1)
+PY
+
+echo "Jupyter started."
+echo "PID file: ${PID_FILE}"
+echo "Log file: ${LOG_FILE}"
+echo "Open after tunneling: http://${HOST}:${PORT}"

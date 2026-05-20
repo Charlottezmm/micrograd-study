@@ -46,6 +46,15 @@ pip install -r requirements.txt
 jupyter lab
 ```
 
+## Remote Jupyter
+
+If you switch between multiple Macs, do not edit the same notebook locally on both machines.
+
+- Use one machine as the single Jupyter host.
+- Start it with `./scripts/start_remote_jupyter.sh`
+- Access it from another machine over SSH tunneling
+- See [docs/20260520_remote_jupyter_workflow.md](docs/20260520_remote_jupyter_workflow.md) for the full workflow
+
 ## Current Learning Thread
 
 The micrograd section established the core loop:
@@ -55,4 +64,3 @@ Value -> Neuron -> Layer -> MLP -> loss -> backward -> update
 ```
 
 The next section, makemore, starts from character-level bigram modeling and builds toward neural language models.
-
