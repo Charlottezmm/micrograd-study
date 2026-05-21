@@ -1,0 +1,3 @@
+display_name: Karpathy Review SOP
+short_description: 3-hour consolidation workflow for Karpathy lessons
+default_prompt: Guide the user through the established Karpathy lesson review SOP after the lesson has already been watched once.
